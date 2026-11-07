@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>B-bot</title>
+  <meta name="description" content="B-bot 是一个在 Android 手机上本地运行的 QQ AI 机器人。无需 root、无需电脑，使用 OneBot 与模型 API 连接。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper: #f2efe6;
+      --black: #111111;
+      --red: #DA291C;
+      --line: rgba(17, 17, 17, .28);
+      --sans: Inter, "Helvetica Neue", Helvetica, Arial, "Microsoft YaHei", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--black);
+      font-family: var(--sans);
+      font-size: 16px;
+      font-weight: 400;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    a:focus-visible { outline: 2px solid var(--red); outline-offset: 4px; }
+
+    .topbar { background: var(--black); color: var(--paper); }
+    .topbar-inner,
+    .page-grid {
+      width: min(1440px, calc(100% - 64px));
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      column-gap: 24px;
+    }
+
+    .topbar-inner { min-height: 72px; align-items: center; }
+    .brand {
+      grid-column: 1 / span 3;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      font-weight: 700;
+    }
+    .brand-mark { width: 14px; height: 14px; flex: none; background: var(--red); }
+    .brand small,
+    .topbar-meta,
+    .nav-link,
+    .eyebrow,
+    .section-index,
+    .micro,
+    .hero-meta,
+    .architecture-label,
+    .feature-number,
+    .footer-meta {
+      font-size: 11px;
+      line-height: 1.2;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    .brand small { font-weight: 400; opacity: .64; }
+    .topbar-meta { grid-column: 6 / span 3; opacity: .64; }
+    .nav { grid-column: 9 / -1; display: flex; justify-content: flex-end; gap: 24px; }
+    .nav-link { padding-bottom: 5px; border-bottom: 1px solid transparent; font-weight: 700; }
+    .nav-link:hover,
+    .nav-link[aria-current="page"] { border-bottom-color: var(--red); color: var(--red); }
+
+    .hero {
+      min-height: calc(100vh - 260px);
+      padding: 80px 0 32px;
+      border-bottom: 1px solid var(--line);
+      align-content: space-between;
+      row-gap: 80px;
+    }
+    .hero-copy { grid-column: 1 / span 8; }
+    .eyebrow { display: flex; gap: 14px; align-items: center; margin-bottom: 34px; font-weight: 700; }
+    .eyebrow::before { content: ""; width: 42px; height: 2px; background: var(--red); }
+    h1, h2, h3, p { margin: 0; }
+    h1 { max-width: 9ch; font-size: 144px; line-height: .88; font-weight: 700; }
+    h1 span { color: var(--red); }
+    .hero-intro { max-width: 42rem; margin-top: 44px; font-size: 22px; line-height: 1.35; }
+    .hero-side { grid-column: 10 / span 3; align-self: start; border-top: 8px solid var(--red); padding-top: 18px; }
+    .hero-side h2 { font-size: 22px; line-height: 1.1; font-weight: 700; }
+    .hero-side p { margin-top: 24px; font-size: 14px; line-height: 1.55; }
+    .hero-side .micro { display: block; margin-top: 36px; font-weight: 700; }
+    .hero-meta {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 24px;
+      border-top: 1px solid var(--black);
+      padding-top: 14px;
+      font-weight: 700;
+    }
+    .hero-meta span:nth-child(n + 2) { border-left: 1px solid var(--line); padding-left: 24px; }
+
+    .section { padding: 112px 0; border-bottom: 1px solid var(--line); }
+    .section-label { grid-column: 1 / span 3; }
+    .section-index { color: var(--red); font-weight: 700; }
+    .section-label h2 { max-width: 5ch; margin-top: 22px; font-size: 72px; line-height: .9; font-weight: 700; }
+    .section-content { grid-column: 4 / -1; }
+    .section-lede { max-width: 35rem; font-size: 34px; line-height: 1.08; font-weight: 700; }
+    .feature-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 24px; margin-top: 76px; }
+    .feature { min-height: 180px; padding: 16px 0 0; border-top: 1px solid var(--black); }
+    .feature-number { color: var(--red); font-weight: 700; }
+    .feature h3 { margin-top: 26px; font-size: 19px; line-height: 1.1; font-weight: 700; }
+    .feature p { max-width: 18rem; margin-top: 14px; font-size: 15px; line-height: 1.5; }
+
+    .architecture { margin-top: 76px; border-top: 1px solid var(--black); }
+    .architecture-row {
+      display: grid;
+      grid-template-columns: repeat(9, minmax(0, 1fr));
+      column-gap: 24px;
+      min-height: 84px;
+      align-items: center;
+      border-bottom: 1px solid var(--line);
+    }
+    .architecture-label { grid-column: 1 / span 2; color: var(--red); font-weight: 700; }
+    .architecture-flow { grid-column: 3 / -1; display: flex; align-items: center; gap: 12px; font-size: 19px; font-weight: 700; }
+    .architecture-flow b { display: inline-block; padding: 10px 12px; border: 1px solid var(--black); font-size: 14px; font-weight: 700; }
+    .architecture-flow b.active { background: var(--red); border-color: var(--red); }
+    .architecture-flow i { color: var(--red); font-style: normal; }
+
+    .cta { padding: 112px 0; background: var(--black); color: var(--paper); }
+    .cta .section-label h2 { color: var(--red); }
+    .cta .section-content { display: flex; flex-direction: column; align-items: flex-start; }
+    .cta-link {
+      display: inline-flex;
+      align-items: center;
+      margin-top: 48px;
+      padding: 16px 20px;
+      background: var(--red);
+      color: var(--black);
+      font-size: 13px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .cta-link:hover { background: var(--paper); }
+
+    footer { padding: 28px 0 34px; background: var(--black); color: var(--paper); border-top: 1px solid var(--paper); }
+    .footer-left { grid-column: 1 / span 5; }
+    .footer-right { grid-column: 9 / -1; }
+    .footer-meta { opacity: .62; font-weight: 700; }
+    .footer-copy { margin-top: 16px; font-size: 13px; line-height: 1.45; }
+
+    @media (max-width: 900px) {
+      .topbar-inner,
+      .page-grid { width: min(100% - 40px, 720px); column-gap: 16px; }
+      .topbar-inner { min-height: 64px; }
+      .brand { grid-column: 1 / span 5; }
+      .topbar-meta { display: none; }
+      .nav { grid-column: 6 / -1; gap: 16px; }
+      .hero { min-height: auto; padding-top: 58px; row-gap: 64px; }
+      .hero-copy { grid-column: 1 / -1; }
+      .hero-side { grid-column: 1 / span 4; }
+      h1 { font-size: 96px; }
+      .hero-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
+      .hero-meta span:nth-child(3) { border-left: 0; padding-left: 0; }
+      .hero-meta span:nth-child(4) { padding-left: 16px; }
+      .section { padding: 76px 0; }
+      .section-label { grid-column: 1 / span 3; }
+      .section-content { grid-column: 4 / -1; }
+      .section-label h2 { font-size: 56px; }
+      .section-lede { font-size: 28px; }
+      .feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 52px; }
+      .footer-left { grid-column: 1 / span 6; }
+      .footer-right { grid-column: 8 / -1; }
+    }
+
+    @media (max-width: 620px) {
+      .topbar-inner,
+      .page-grid { width: calc(100% - 32px); }
+      .brand { grid-column: 1 / span 4; gap: 8px; }
+      .brand small { display: none; }
+      .nav { grid-column: 5 / -1; gap: 12px; }
+      .nav-link { font-size: 10px; letter-spacing: .04em; }
+      .hero { padding: 48px 0 24px; }
+      .hero-side { grid-column: 1 / -1; max-width: 300px; }
+      h1 { max-width: 8ch; font-size: 60px; }
+      .hero-intro { margin-top: 30px; font-size: 18px; }
+      .hero-meta { grid-template-columns: 1fr 1fr; gap: 14px 16px; font-size: 9px; letter-spacing: .06em; }
+      .hero-meta span:nth-child(2),
+      .hero-meta span:nth-child(4) { padding-left: 12px; }
+      .section-label,
+      .section-content { grid-column: 1 / -1; }
+      .section-label { margin-bottom: 42px; }
+      .section-label h2 { max-width: none; font-size: 56px; }
+      .section-lede { font-size: 27px; }
+      .feature-grid { grid-template-columns: 1fr; margin-top: 44px; }
+      .feature { min-height: 0; padding-bottom: 28px; }
+      .architecture { margin-top: 48px; }
+      .architecture-row { grid-template-columns: 1fr; gap: 12px; padding: 18px 0; }
+      .architecture-label,
+      .architecture-flow { grid-column: 1 / -1; }
+      .architecture-flow { flex-wrap: wrap; }
+      .cta { padding: 76px 0; }
+      .footer-left,
+      .footer-right { grid-column: 1 / -1; }
+      .footer-right { margin-top: 28px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="index.html" aria-label="B-bot 首页">
+       
+        <span>B-bot</span>
+        <small>v1.1.1 / Android</small>
+      </a>
+      <nav class="nav" aria-label="主导航">
+        <a class="nav-link" href="index.html" aria-current="page">PT.1 / 首页</a>
+        <a class="nav-link" href="guide.html">PT.2 / 说明</a>
+        <a class="nav-link" href="https://github.com/NOBAI612325/B-bot-AI-QQ-" target="_blank" rel="noopener">GitHub ↗</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero page-grid" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <h1 id="hero-title">把 AI<br>接入 <span>QQ</span></h1>
+        <p class="hero-intro">一个在 Android 手机上运行的 QQ AI 机器人。Linux 环境、QQ、NapCat 和消息编排都在本地完成，不需要 root，也不需要电脑。</p>
+      </div>
+      <aside class="hero-side">
+        <h2>本地运行<br>只把模型请求送出</h2>
+        <p>以 proot 运行 Ubuntu 22.04 arm64，通过 OneBot v11 连接 QQ，再调用 OpenAI 兼容或 Anthropic 模型接口。</p>
+        <span class="micro">No root / No server</span>
+      </aside>
+      <div class="hero-meta" aria-label="产品规格">
+        <span>Android 7.0+</span>
+        <span>ARM64</span>
+        <span>OneBot v11</span>
+        <span>5.9 MB APK</span>
+      </div>
+    </section>
+
+    <section class="section page-grid" aria-labelledby="position-title">
+      <div class="section-label">
+        <span class="section-index">01</span>
+        <h2 id="position-title">定位</h2>
+      </div>
+      <div class="section-content">
+        <p class="section-lede">把一台 Android 手机变成一个本地运行的 QQ AI 节点。</p>
+        <div class="feature-grid">
+          <article class="feature">
+            <span class="feature-number">01 / LOCAL</span>
+            <h3>全部在手机内</h3>
+            <p>Ubuntu、QQ NT、NapCat 和历史上下文存放在 App 私有目录。</p>
+          </article>
+          <article class="feature">
+            <span class="feature-number">02 / SIMPLE</span>
+            <h3>不需要 root</h3>
+            <p>用 proot 提供用户态 Linux 环境，普通应用权限即可运行。</p>
+          </article>
+          <article class="feature">
+            <span class="feature-number">03 / OPEN</span>
+            <h3>接口自由选择</h3>
+            <p>支持 10 家厂商预设，也支持任意 OpenAI 兼容中转地址。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section page-grid" aria-labelledby="system-title">
+      <div class="section-label">
+        <span class="section-index">02</span>
+        <h2 id="system-title">系统</h2>
+      </div>
+      <div class="section-content">
+        <p class="section-lede">一条消息从 QQ 进入，经过本地编排，再由模型返回。</p>
+        <div class="architecture" aria-label="系统消息链路">
+          <div class="architecture-row">
+            <span class="architecture-label">01 / IN</span>
+            <div class="architecture-flow"><b>QQ NT</b><i>→</i><b class="active">NapCat</b><i>→</i><b>OneBot</b></div>
+          </div>
+          <div class="architecture-row">
+            <span class="architecture-label">02 / LOCAL</span>
+            <div class="architecture-flow"><b>127.0.0.1:3001</b><i>→</i><b class="active">B-bot App</b><i>→</i><b>本地历史</b></div>
+          </div>
+          <div class="architecture-row">
+            <span class="architecture-label">03 / OUT</span>
+            <div class="architecture-flow"><b>LLM Client</b><i>→</i><b class="active">模型 API</b><i>→</i><b>回复 QQ</b></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta page-grid" aria-labelledby="guide-title">
+      <div class="section-label">
+        <span class="section-index">03</span>
+        <h2 id="guide-title">说明</h2>
+      </div>
+      <div class="section-content">
+        <p class="section-lede">从安装环境到配置模型，完整说明页按步骤拆解每一层。</p>
+        <a class="cta-link" href="guide.html">打开完整使用说明 ↗</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="page-grid">
+      <div class="footer-left">
+        <span class="footer-meta">B-bot / Android / v1.1.1</span>
+
+  
+
+
+
+
+      </div>
+      <div class="footer-right">
+        <span class="footer-meta">Project</span>
+        <p class="footer-copy"><a href="guide.html">使用说明 ↗</a>　<a href="https://github.com/NOBAI612325/B-bot-AI-QQ-" target="_blank" rel="noopener">GitHub ↗</a></p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

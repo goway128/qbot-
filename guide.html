@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guide</title>
+<meta name="description" content="一款把 AI 大模型接入 QQ 的 安卓机器人。基于 proot 无需 root，本地运行 Ubuntu + QQ NT + NapCat，支持 10 家厂商模型与自定义 OpenAI 兼容接口。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="guide.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="index.html" aria-label="B-bot 首页"><span class="mark"></span>
+    <span>B-bot</span>
+        <small>v1.1.1 / Android</small>
+    <div class="spacer"></div>
+    <a class="home" href="index.html">首页 ↗</a>
+    <a class="gh" href="https://github.com/NOBAI612325/B-bot-AI-QQ-" target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- ============ SIDE NAV ============ -->
+  <nav class="side" aria-label="目录">
+    <h4>Contents</h4>
+    <ul id="nav">
+      <li><a href="#overview"><span class="n">00</span>概览</a></li>
+      <li><a href="#principle"><span class="n">01</span>技术原理</a></li>
+      <li><a href="#arch" style="padding-left:32px;font-size:12.5px"><span class="n">1.1</span>整体架构</a></li>
+      <li><a href="#proot" style="padding-left:32px;font-size:12.5px"><span class="n">1.2</span>非 root 跑 Linux</a></li>
+      <li><a href="#napcat" style="padding-left:32px;font-size:12.5px"><span class="n">1.3</span>QQ 与 NapCat</a></li>
+      <li><a href="#chain" style="padding-left:32px;font-size:12.5px"><span class="n">1.4</span>消息完整链路</a></li>
+      <li><a href="#model" style="padding-left:32px;font-size:12.5px"><span class="n">1.5</span>模型接入方式</a></li>
+      <li><a href="#usage"><span class="n">02</span>如何使用</a></li>
+      <li><a href="#features"><span class="n">03</span>特色</a></li>
+      <li><a href="#faq"><span class="n">04</span>常见问题</a></li>
+      <li><a href="#appendix"><span class="n">05</span>版本信息</a></li>
+    </ul>
+  </nav>
+
+  <!-- ============ MAIN ============ -->
+  <main>
+
+    <!-- ---------- HERO ---------- -->
+    <header class="hero" id="overview">   
+      <h1>把大模型<br>接入QQ的<em> 
+        安卓Bot</em></h1>
+      <p class="lede">
+        除「调用大模型 API」和「QQ 收发消息」需要联网外，<strong>其余全部在手机本地运行</strong>，
+        Linux 环境、QQ、NapCat 都装在 App 私有目录里，不依赖电脑，也不需要 root。
+      </p>
+      <div class="chips">
+        <span class="chip hl">无需 root</span>
+        <span class="chip hl">无需刷机</span>
+        <span class="chip hl">无需电脑</span>
+        <span class="chip">Android 7.0+</span>
+        <span class="chip">arm64</span>
+        <span class="chip">骁龙 / 天玑</span>
+        <span class="chip">Proot + Ubuntu 22.04</span>
+        <span class="chip">OneBot v11</span>
+      </div>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="https://github.com/NOBAI612325/B-bot-AI-QQ-" target="_blank" rel="noopener">项目地址 GitHub ↗</a>
+        <a class="btn btn-ghost" href="#usage">查看使用步骤</a>
+      </div>
+ 
+    <!-- ---------- 1 技术原理 ---------- -->
+    <section id="principle">
+      <div class="sec-head">
+        <div class="sec-top"><span class="sec-num">01</span><span class="sec-kicker">Technical Principle</span></div>
+        <h2>技术原理</h2>
+        <p class="lede">从 proot 用户态根文件系统，到注入式 NapCat 与 OneBot 回环服务，再到唯一一次对外的模型 API 调用 —— 这一节拆开 B-bot 的每一层。</p>
+      </div>
+
+      <!-- 1.1 -->
+      <h3 class="sub" id="arch"><span class="idx">1.1</span>整体架构</h3>
+
+      <figure class="term">
+        <div class="term-bar"><span class="d"></span><span class="d"></span><span class="d"></span><span class="t">system architecture · b-bot v1.1.1</span></div>
+<pre>  手机 App（前台服务）
+     |
+     |-- proot（用户态 chroot）
+     |      |
+     |      +-- Ubuntu 22.04 arm64 根文件系统
+     |             |-- Xvfb 虚拟显示（无界面运行 QQ）
+     |             |-- QQ NT (Linux arm64)
+     |             +-- NapCat（注入 QQ 进程内，起 OneBot 服务）
+     |
+     |-- OneBot v11 WebSocket  <span class="k">ws://127.0.0.1:3001</span>（仅监听回环）
+     |
+     +-- 消息编排 -&gt; LLM 客户端 -&gt; 厂商 API<span class="c">（唯一的外部调用）</span></pre>
+        <div class="foot">
+          <span>SCOPE · APP PRIVATE DIR</span>
+          <span>BIND · 127.0.0.1 ONLY</span>
+          <span>EXTERNAL CALL · 1</span>
+        </div>
+      </figure>
+
+      <div class="note calm">
+        <span class="lbl">安全边界</span>
+        <p>所有组件都在 App 私有数据目录内，独立于系统；监听端口只绑 <code class="inline">127.0.0.1</code>，外部无法访问。</p>
+      </div>
+
+      <!-- 1.2 -->
+      <h3 class="sub" id="proot"><span class="idx">1.2</span>为什么能在非 root 手机上跑 Linux</h3>
+      <p>安卓没有 root 就不能 chroot。App 内置 <b>proot</b>：它用 <code class="inline">ptrace</code> 拦截程序的系统调用，把路径、uid、挂载点「翻译」成普通目录，于是 Ubuntu 的 arm64 根文件系统可以以普通应用身份直接运行。</p>
+
+      <h4 class="mini">两个必要的配套</h4>
+      <div class="grid-2">
+        <div class="card">
+          <div class="tag">Requirement 01</div>
+          <h4>targetSdk 固定为 28</h4>
+          <p>Android 10 起，targetSdk ≥ 29 的应用禁止从自身数据目录执行可执行文件（W^X 策略），proot 会直接报 <code class="inline">error=13 Permission denied</code>。保持 28 即可获得与 Termux 相同的兼容模式。</p>
+        </div>
+        <div class="card">
+          <div class="tag">Requirement 02</div>
+          <h4>proot-loader</h4>
+          <p>guest 程序需要的动态链接器与应用目录不同，必须通过 <code class="inline">PROOT_LOADER</code> 指定外部加载器，否则会出现 <code class="inline">execve("/usr/bin/env"): No such file or directory</code>。App 已内置并自动配置。</p>
+        </div>
+      </div>
+
+      <!-- 1.3 -->
+      <h3 class="sub" id="napcat"><span class="idx">1.3</span>QQ 与 NapCat 是怎么跑起来的</h3>
+      <div class="grid-3">
+        <div class="card">
+          <div class="tag">QQ NT</div>
+          <h4>官方 Linux arm64 版本</h4>
+          <p>QQ 使用官方 QQ NT Linux arm64 版本（deb 解包后放入 rootfs），运行在 Xvfb 虚拟显示上，因此不需要屏幕也能登录。</p>
+        </div>
+        <div class="card">
+          <div class="tag">NapCat</div>
+          <h4>以「注入」方式工作</h4>
+          <p>把 QQ 的 <code class="inline">resources/app/package.json</code> 中 <code class="inline">main</code> 指向外部入口 <code class="inline">loadNapCat.js</code>，该入口先加载 NapCat 模块，再按原路径启动 QQ。OneBot 服务运行在 QQ 进程内部，能直接收发消息，而不需要改动 QQ 本体。</p>
+        </div>
+        <div class="card">
+          <div class="tag">First Run</div>
+          <h4>自动生成 OneBot 配置</h4>
+          <p>首次启动会生成 OneBot 配置：</p>
+          <div class="kv">正向 WebSocket   <b>127.0.0.1:3001</b>
+NapCat WebUI     <b>127.0.0.1:6099</b></div>
+        </div>
+      </div>
+
+      <!-- 1.4 -->
+      <h3 class="sub" id="chain"><span class="idx">1.4</span>一条消息的完整链路</h3>
+      <div class="flow">
+        <div class="item"><div class="n">1</div><div class="txt">别人给 bot 的 QQ 发消息 → <b>QQ 客户端收到</b></div></div>
+        <div class="arrow"></div>
+        <div class="item"><div class="n">2</div><div class="txt">NapCat 通过 <b>WebSocket</b> 把事件推给 App</div></div>
+        <div class="arrow"></div>
+        <div class="item"><div class="n">3</div><div class="txt">App 判断要不要回复：<br><b>私聊：</b>始终回复　·　<b>群聊：</b>按设置「仅被 @ 时回复」或「持续主动回复」</div></div>
+        <div class="arrow"></div>
+        <div class="item"><div class="n">4</div><div class="txt">App 取出该会话的<b>本地历史上下文</b>，拼上角色提示词，调用模型 API</div></div>
+        <div class="arrow"></div>
+        <div class="item"><div class="n">5</div><div class="txt">模型返回文本 → App 通过 OneBot <code class="inline">send_msg</code> 发回 QQ</div></div>
+        <div class="arrow"></div>
+        <div class="item hl"><div class="n">6</div><div class="txt">这轮对话<b>写入本地历史</b>（用于后续上下文）</div></div>
+      </div>
+
+      <div class="note">
+        <span class="lbl">隐私</span>
+        <p>图片、语音等内容不会被上传到除模型 API 之外的任何地方；App 本身不含任何统计或上报。</p>
+      </div>
+
+      <!-- 1.5 -->
+      <h3 class="sub" id="model"><span class="idx">1.5</span>模型接入方式</h3>
+      <p class="muted">支持两种主流协议，因此兼容绝大多数厂商：</p>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="tag">Protocol A</div>
+          <h4>OpenAI 兼容</h4>
+          <div class="kv">对话地址   <b>{base}/chat/completions</b>
+模型列表   <b>GET {base}/models</b>
+鉴权方式   <b>Authorization: Bearer &lt;Key&gt;</b></div>
+        </div>
+        <div class="card">
+          <div class="tag">Protocol B</div>
+          <h4>Anthropic</h4>
+          <div class="kv">对话地址   <b>{base}/v1/messages</b>
+模型列表   <b>GET {base}/v1/models</b>
+鉴权方式   <b>x-api-key + anthropic-version</b></div>
+        </div>
+      </div>
+
+      <h4 class="mini">内置厂商预设</h4>
+      <div class="chips" style="margin-top:6px">
+        <span class="chip">MiMo</span>
+        <span class="chip">OpenAI</span>
+        <span class="chip">通义千问</span>
+        <span class="chip">豆包</span>
+        <span class="chip">DeepSeek</span>
+        <span class="chip">Kimi</span>
+        <span class="chip">Claude</span>
+        <span class="chip">xAI</span>
+        <span class="chip">Gemini</span>
+        <span class="chip">MiniMax</span>
+        <span class="chip">自定义 OpenAI 兼容</span>
+      </div>
+      <p class="muted" style="margin-top:18px">「自定义 OpenAI 兼容」可填任意中转地址。API Key 只保存在本机 <code class="inline">SharedPreferences</code>，不会上传。</p>
+    </section>
+
+    <!-- ---------- 2 如何使用 ---------- -->
+    <section id="usage">
+      <div class="sec-head">
+        <div class="sec-top"><span class="sec-num">02</span><span class="sec-kicker">How To Use</span></div>
+        <h2>如何使用</h2>
+        <p class="lede">六个工序：装 App → 装环境 → 登录 QQ → 配模型 → 设人设 → 日常使用。每一步都有明确的完成标志。</p>
+      </div>
+
+      <div class="step">
+        <span class="dot"></span>
+        <div class="body">
+          <div class="no">Step 01</div>
+          <h3>安装 App</h3>
+          <p>安装 <code class="inline">B-bot-v1.1.1.apk</code>（约 5.9 MB）。</p>
+          <ul>
+            <li>首次打开请<b>允许通知权限</b>（用于显示运行状态的前台通知）</li>
+            <li>建议在系统设置里给 B-bot 开启：<b>自启动 / 后台不受限制 / 忽略电池优化</b>，否则息屏后系统可能冻结它的进程</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="step">
+        <span class="dot"></span>
+        <div class="body">
+          <div class="no">Step 02</div>
+          <h3>安装 NapCat 环境（仅首次）</h3>
+          <p>首页点击「<b>安装 / 重装 NapCat</b>」，确认后开始下载并解包：</p>
+          <ul>
+            <li><b>内容：</b>Ubuntu 根文件系统 + QQ + NapCat，约 500 MB</li>
+            <li><b>耗时：</b>视网络，通常几分钟</li>
+            <li><b>不中断：</b>安装期间可以切到设置页、日志页，安装不会中断，切回来还能看到进度</li>
+          </ul>
+          <p>完成后首页「napcat」状态会变为<b>已就绪</b>（深蓝）。若显示「未安装」或「安装中」，看日志页的失败原因（多为空间不足或网络中断）。</p>
+          <div class="note calm">
+            <span class="lbl">提示</span>
+            <p>需要至少 <b>2 GB</b> 可用空间；建议在 Wi-Fi 下进行。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <span class="dot"></span>
+        <div class="body">
+          <div class="no">Step 03</div>
+          <h3>启动并登录 QQ</h3>
+          <ol>
+            <li>首页点「<b>启动 B-bot</b>」</li>
+            <li>等待几秒，状态中「bot服务」变为<b>运行中</b></li>
+            <li>点「<b>扫码登录 QQ</b>」，弹窗会显示二维码</li>
+            <li>用手机 QQ（或另一台设备）扫码并在 QQ 里确认登录</li>
+            <li>登录成功后，首页「QQ」状态变为 <b>已连接 (QQ号)</b></li>
+          </ol>
+          <p class="muted">二维码约 1~2 分钟过期。NapCat 会自动换新码，弹窗会跟随刷新，直接扫最新那张即可。</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <span class="dot"></span>
+        <div class="body">
+          <div class="no">Step 04</div>
+          <h3>配置模型</h3>
+          <p>进入「<b>设置</b>」页：</p>
+          <ol>
+            <li>选择厂商（例如 MiMo、DeepSeek、Gemini…）</li>
+            <li>填写 <b>API Key</b></li>
+            <li>点击「<b>拉取模型列表</b>」<br>
+              <span class="muted">成功：下拉框出现该账号真实可用的模型，直接选择<br>失败：会提示具体原因（如 401 表示 Key 不对）</span></li>
+            <li>也可以不拉取，直接在「<b>自定义模型名</b>」里手写模型 ID</li>
+            <li>点「<b>保存设置</b>」，会提示「生效模型：xxx」</li>
+          </ol>
+          <div class="note">
+            <span class="lbl">说明</span>
+            <p>自定义输入优先于下拉选择；两者都为空时使用该厂商的默认模型。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <span class="dot"></span>
+        <div class="body">
+          <div class="no">Step 05</div>
+          <h3>设置角色与回复策略</h3>
+          <p>同样在设置页：</p>
+          <ul>
+            <li><b>角色提示词：</b>决定 bot 的人设、语气、说话方式。留空则使用默认的「友善群聊助手」提示词。</li>
+            <li><b>群聊回复策略：</b><br>
+              <span class="muted">· 仅被 @ 时回复 —— 安静，只有被点名才说话<br>
+              · 持续主动回复 —— 群里每条消息都会参与</span></li>
+            <li><b>私聊：</b>始终主动回复（无需设置）</li>
+            <li><b>历史：</b>本地保存，可在设置页「清空全部会话历史」重置</li>
+          </ul>
+          <p class="muted">保存后立即对下一条消息生效。</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <span class="dot"></span>
+        <div class="body">
+          <div class="no">Step 06</div>
+          <h3>日常使用</h3>
+          <ul>
+            <li><b>停止：</b>只停止 bot 的收发。NapCat 进程和 QQ 登录状态都会保留，再次点「启动 B-bot」只需几秒重连，不需要重新扫码。</li>
+            <li><b>日志页：</b>实时查看 QQ / NapCat 输出、模型调用、收发结果与错误；发送失败会打印 NapCat 返回的 <code class="inline">retcode</code>，便于排查。</li>
+          </ul>
+
+          <h4 class="mini">运行状态灯含义</h4>
+          <div class="lights">
+            <div class="light">
+              <div class="name">napcat</div>
+              <div class="row"><span class="bulb r"></span><span><code>R</code> 已就绪</span></div>
+              <div class="row"><span class="bulb l"></span><span><code>L</code> 安装中</span></div>
+              <div class="row"><span class="bulb n"></span><span><code>N</code> 未安装</span></div>
+            </div>
+            <div class="light">
+              <div class="name">QQ</div>
+              <div class="row"><span class="bulb r"></span><span><code>R</code> 已登录</span></div>
+              <div class="row"><span class="bulb n"></span><span><code>N</code> 未登录</span></div>
+            </div>
+            <div class="light">
+              <div class="name">bot服务</div>
+              <div class="row"><span class="bulb r"></span><span><code>R</code> 收发运行中</span></div>
+              <div class="row"><span class="bulb l"></span><span><code>L</code> 已停止收发（NapCat 仍在跑）</span></div>
+              <div class="row"><span class="bulb n"></span><span><code>N</code> 未启动</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- 3 特色 ---------- -->
+    <section id="features">
+      <div class="sec-head">
+        <div class="sec-top"><span class="sec-num">03</span><span class="sec-kicker">Highlights</span></div>
+        <h2>特色</h2>
+        <p class="lede">真正本地、无需 root、不碰账号密码 —— 以及十个让它日常好用的细节。</p>
+      </div>
+
+      <ul class="feat">
+        <li><div class="num">01</div><div><h4>真正本地运行</h4><p>Linux 环境、QQ、NapCat 全部在手机内，不依赖电脑或服务器；唯一对外请求是模型 API。</p></div></li>
+        <li><div class="num">02</div><div><h4>无需 root</h4><p>基于 proot + 兼容模式，普通应用即可跑完整 Ubuntu 与 QQ。</p></div></li>
+        <li><div class="num">03</div><div><h4>扫码登录，不碰账号密码</h4><p>App 不保存 QQ 账号密码，登录完全由 QQ 官方客户端完成。</p></div></li>
+        <li><div class="num">04</div><div><h4>10 家厂商 + 自定义</h4><p>两种协议自动适配，OpenAI 兼容的任意中转地址都能填。</p></div></li>
+        <li><div class="num">05</div><div><h4>一键拉取模型列表</h4><p>不用去翻文档找模型 ID，选完即用。</p></div></li>
+        <li><div class="num">06</div><div><h4>智能回复策略</h4><p>私聊始终回、群聊可「仅 @ 回复」或「持续主动」，一键切换。</p></div></li>
+        <li><div class="num">07</div><div><h4>可自定义人设</h4><p>角色提示词完全自由，支持多轮上下文。</p></div></li>
+        <li><div class="num">08</div><div><h4>停止不退出</h4><p>停止只停收发，QQ 保持在线，避免每次重启都要重新扫码。</p></div></li>
+        <li><div class="num">09</div><div><h4>安装不中断</h4><p>环境安装独立于界面运行，切页面不影响。</p></div></li>
+        <li><div class="num">10</div><div><h4>可读日志</h4><p>二维码、错误码、收发记录都直接显示，出问题能自己看明白。</p></div></li>
+      </ul>
+    </section>
+
+    <!-- ---------- 4 常见问题 ---------- -->
+    <section id="faq">
+      <div class="sec-head">
+        <div class="sec-top"><span class="sec-num">04</span><span class="sec-kicker">Troubleshooting</span></div>
+        <h2>常见问题</h2>
+        <p class="lede">先看日志，再看状态灯。下面七条覆盖了绝大多数情况。</p>
+      </div>
+
+      <details open>
+        <summary><span class="q">Q1</span>能收到消息，但 bot 不回复？</summary>
+        <div class="ans"><p>先看首页「bot服务」是否为运行中；再看日志页是否有「<b>API 调用失败</b>」或 <code class="inline">retcode</code>。常见原因：<b>API Key 错误、余额不足、模型 ID 不存在</b>，或群聊设置为「仅被 @」而消息里没有 @ 它。</p></div>
+      </details>
+
+      <details>
+        <summary><span class="q">Q2</span>首页 QQ 一直显示未连接？</summary>
+        <div class="ans"><p>确认「napcat」是否已就绪、QQ 是否扫码登录成功。bot 会自动重连，等 <b>10~30 秒</b>通常可恢复；若仍不行，点一次<b>停止再启动</b>。</p></div>
+      </details>
+
+      <details>
+        <summary><span class="q">Q3</span>二维码显示不出来或扫了没反应？</summary>
+        <div class="ans"><p>二维码约 <b>1~2 分钟</b>过期，弹窗会自动换新码，请扫最新显示的那张。若弹窗一直空白，等 NapCat 启动完成（日志出现二维码相关行）再打开。</p></div>
+      </details>
+
+      <details>
+        <summary><span class="q">Q4</span>安装失败？</summary>
+        <div class="ans"><p>看日志页错误。多为<b>可用空间不足（需 ≥ 2 GB）</b>或<b>网络中断</b>；重试「安装 / 重装 NapCat」即可。</p></div>
+      </details>
+
+      <details>
+        <summary><span class="q">Q5</span>安装 APK 时提示「解析软件包出现问题」？</summary>
+        <div class="ans"><p>先<b>卸载旧版</b>再安装；并用文件管理器核对文件大小是否为 <code class="inline">5,858,854</code> 字节（传输截断会导致该错误）。</p></div>
+      </details>
+
+      <details>
+        <summary><span class="q">Q6</span>息屏后 bot 掉线？</summary>
+        <div class="ans"><p>在系统设置中<b>允许 B-bot 自启动</b>、关闭它的<b>电池优化限制</b>；部分 ROM 还需要在「最近任务」里给 B-bot <b>加锁</b>。</p></div>
+      </details>
+
+      <details>
+        <summary><span class="q">Q7</span>怎么彻底清除？</summary>
+        <div class="ans"><p>设置页「<b>清空全部会话历史</b>」清本地对话；要连环境一起清除，<b>卸载 App</b> 即可（环境文件都在应用私有目录内）。</p></div>
+      </details>
+    </section>
+
+    <!-- ---------- 5 版本信息 ---------- -->
+    <section id="appendix">
+      <div class="sec-head">
+        <div class="sec-top"><span class="sec-num">05</span><span class="sec-kicker">Appendix</span></div>
+        <h2>附录：版本信息</h2>
+      </div>
+
+      <table class="spec">
+        <tr><th>版本</th><td>v1.1.1（versionCode 17）</td></tr>
+        <tr><th>安装包</th><td>B-bot-v1.1.1.apk　·　5,858,854 字节</td></tr>
+        <tr><th>系统要求</th><td>Android 7.0 及以上　·　arm64（骁龙、天玑等主流芯片）</td></tr>
+        <tr><th>运行条件</th><td>无需 root、无需刷机、无需电脑　·　可用空间 ≥ 2 GB</td></tr>
+        <tr><th>项目地址</th><td><a href="https://github.com/NOBAI612325/B-bot-AI-QQ-" target="_blank" rel="noopener">github.com/NOBAI612325/B-bot-AI-QQ-</a></td></tr>
+      </table>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <div class="foot-in">
+    <div>
+      <p class="big">B-bot <em>v1.1.1</em></p>
+      <p class="sm">
+        全部本地运行 · 唯一外呼为模型 API<br>
+        proot + Ubuntu 22.04 arm64 + QQ NT + NapCat
+      </p>
+    </div>
+    <div class="sm" style="text-align:right">
+      PROJECT<br>
+      <a href="https://github.com/NOBAI612325/B-bot-AI-QQ-" target="_blank" rel="noopener">GitHub ↗</a><br><br>
+      APK  5,858,854 BYTES<br>
+      VERSIONCODE  17
+    </div>
+  </div>
+</footer>
+
+<script>
+  // scrollspy
+  const links = Array.from(document.querySelectorAll('#nav a'));
+  const map = new Map();
+  links.forEach(a => {
+    const id = a.getAttribute('href').slice(1);
+    const el = document.getElementById(id);
+    if (el) map.set(el, a);
+  });
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const a = map.get(e.target);
+        if (a) a.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+  map.forEach((_, el) => obs.observe(el));
+
+  // open one FAQ at a time
+  const faqs = document.querySelectorAll('#faq details');
+  faqs.forEach(d => d.addEventListener('toggle', () => {
+    if (d.open) faqs.forEach(o => { if (o !== d) o.open = false; });
+  }));
+</script>
+
+</body>
+</html>
